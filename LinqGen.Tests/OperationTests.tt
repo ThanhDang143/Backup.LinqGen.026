@@ -1,0 +1,184 @@
+// LinqGen.Tests, Maxwell Keonwoo Kang <code.athei@gmail.com>, 2022
+
+<#@template language="C#" #>
+<#@ assembly name="System.Core" #>
+<#
+    var intSources = new (string element, string variable, string prefix)[]
+    {
+        ("int", "IntEmpty", null),
+        ("int", "IntArray", null),
+        ("int", "IntList", null),
+        ("int", "IntEnumerable", null),
+        ("ReferenceInt", "ReferenceIntList", "RefInt")
+    };
+
+    var castSources = new (string element, string variable, string prefix)[]
+    {
+        ("object", "ObjectEmpty", null),
+        ("object", "ObjectStringArray", null),
+        ("object", "ObjectStringList", null),
+        ("object", "ObjectStringEnumerable", null),
+    };
+
+    var testExpressions = new (string title, string linq, string linqgen,
+        (string element, string variable, string prefix)[] sources)[]
+    {
+        ("Select", "Select(x => x * 2)", "Select(x => x * 2)", intSources),
+        ("SelectStruct", "Select(x => x * 2)", "Select(new {1}DoubleSelector())", intSources),
+        ("SelectAt", "Select((x, i) => x + i)", "Select((x, i) => x + i)", intSources),
+        ("SelectAtStruct", "Select((x, i) => x + i)", "Select(new {1}AddSelector())", intSources),
+        ("Where", "Where(x => x % 2 == 0)", "Where(x => x % 2 == 0)", intSources),
+        ("WhereStruct", "Where(x => x % 2 == 0)", "Where(new {1}EvenPredicate())", intSources),
+        ("WhereAt", "Where((x, i) => (x - i) % 2 == 0)", "Where((x, i) => (x - i) % 2 == 0)", intSources),
+        ("WhereAtStruct", "Where((x, i) => (x - i) % 2 == 0)", "Where(new {1}MinusEvenPredicate())", intSources),
+        ("Distinct", "Distinct()", "Distinct()", intSources),
+        ("DistinctInterface", "Distinct()", "Distinct(EqualityComparer<{0}>.Default)", intSources),
+        ("DistinctStruct", "Distinct()", "Distinct(new {1}StructEqualityComparer())", intSources),
+        ("Skip", "Skip(2)", "Skip(2)", intSources),
+        ("Take", "Take(7)", "Take(7)", intSources),
+        ("Order", "OrderBy(x => x)", "Order()", intSources),
+        ("OrderComparer", "OrderBy(x => x)", "Order(Comparer<{0}>.Default)", intSources),
+        ("OrderStruct", "OrderBy(x => x)", "Order(new {1}StructComparer())", intSources),
+        ("OrderDesc", "OrderByDescending(x => x)", "OrderDescending()", intSources),
+        ("OrderDescComparer", "OrderByDescending(x => x)", "OrderDescending(Comparer<{0}>.Default)", intSources),
+        ("OrderDescStruct", "OrderByDescending(x => x)", "OrderDescending(new {1}StructComparer())", intSources),
+        ("OrderBy", "OrderBy(x => x % 3)", "OrderBy(x => x % 3)", intSources),
+        ("OrderByKey", "OrderBy(x => x % 3)", "OrderBy(new {1}Mod3Selector())", intSources),
+        ("OrderByComparer", "OrderBy(x => x % 3)", "OrderBy(x => x % 3, Comparer<{0}>.Default)", intSources),
+        ("OrderByStruct", "OrderBy(x => x % 3)", "OrderBy(new {1}Mod3Selector(), new {1}StructComparer())", intSources),
+        ("OrderByDesc", "OrderByDescending(x => x % 3)", "OrderByDescending(x => x % 3)", intSources),
+        ("OrderByDescKey", "OrderByDescending(x => x % 3)", "OrderByDescending(new {1}Mod3Selector())", intSources),
+        ("OrderByDescComparer", "OrderByDescending(x => x % 3)",
+            "OrderByDescending(x => x % 3, Comparer<{0}>.Default)", intSources),
+        ("OrderByDescStruct", "OrderByDescending(x => x % 3)",
+            "OrderByDescending(new {1}Mod3Selector(), new {1}StructComparer())", intSources),
+        ("ThenBy", "OrderBy(x => x % 3).ThenBy(x => -x)", "OrderBy(x => x % 3).ThenBy(x => -x)", intSources),
+        ("ThenByKey", "OrderBy(x => x % 3).ThenBy(x => -x)",
+            "OrderBy(x => x % 3).ThenBy(new {1}NegateSelector())", intSources),
+        ("ThenByComparer", "OrderBy(x => x % 3).ThenBy(x => -x)",
+            "OrderBy(x => x % 3).ThenBy(x => -x, Comparer<{0}>.Default)", intSources),
+        ("ThenByStruct", "OrderBy(x => x % 3).ThenBy(x => -x)",
+            "OrderBy(x => x % 3).ThenBy(new {1}NegateSelector(), new {1}StructComparer())", intSources),
+        ("ThenByDesc", "OrderBy(x => x % 3).ThenByDescending(x => -x)",
+            "OrderBy(x => x % 3).ThenByDescending(x => -x)", intSources),
+        ("ThenByDescKey", "OrderBy(x => x % 3).ThenByDescending(x => -x)",
+            "OrderBy(x => x % 3).ThenByDescending(new {1}NegateSelector())", intSources),
+        ("ThenByDescComparer", "OrderBy(x => x % 3).ThenByDescending(x => -x)",
+            "OrderBy(x => x % 3).ThenByDescending(x => -x, Comparer<{0}>.Default)", intSources),
+        ("ThenByDescStruct", "OrderBy(x => x % 3).ThenByDescending(x => -x)",
+            "OrderBy(x => x % 3).ThenByDescending(new {1}NegateSelector(), new {1}StructComparer())", intSources),
+        ("GroupBy",
+            "GroupBy(x => x % 3).Select(x => x.Sum())",
+            "GroupBy(x => x % 3).Select(x => x.Sum())", intSources),
+        ("GroupByComparer",
+            "GroupBy(x => x % 3, EqualityComparer<{0}>.Default).Select(x => x.Sum())",
+            "GroupBy(x => x % 3, EqualityComparer<{0}>.Default).Select(x => x.Sum())", intSources),
+        ("GroupByElement",
+            "GroupBy(x => x % 3, x => x).Select(x => x.Sum())",
+            "GroupBy(x => x % 3, x => x).Select(x => x.Sum())", intSources),
+        ("GroupByElementComparer",
+            "GroupBy(x => x % 3, x => x, EqualityComparer<{0}>.Default).Select(x => x.Sum())",
+            "GroupBy(x => x % 3, x => x, EqualityComparer<{0}>.Default).Select(x => x.Sum())", intSources),
+        ("GroupByResult",
+            "GroupBy(x => x % 3, (k, v) => v.Sum())",
+            "GroupBy(x => x % 3, (k, v) => v.Sum())", intSources),
+        ("GroupByResultComparer",
+            "GroupBy(x => x % 3, (k, v) => v.Sum(), EqualityComparer<{0}>.Default)",
+            "GroupBy(x => x % 3, (k, v) => v.Sum(), EqualityComparer<{0}>.Default)", intSources),
+        ("GroupByElementResult",
+            "GroupBy(x => x % 3, x => x, (k, v) => v.Sum())",
+            "GroupBy(x => x % 3, x => x, (k, v) => v.Sum())", intSources),
+        ("GroupByElementResultComparer",
+            "GroupBy(x => x % 3, x => x, (k, v) => v.Sum(), EqualityComparer<{0}>.Default)",
+            "GroupBy(x => x % 3, x => x, (k, v) => v.Sum(), EqualityComparer<{0}>.Default)", intSources),
+        ("Cast", "Cast<string>()", "Cast<string>()", castSources),
+        ("OfType", "OfType<string>()", "OfType<string>()", castSources),
+        ("OfTypeSelect", "OfType<string>().Select(g => string.IsNullOrEmpty(g) ? '\0' : g[0])", "OfType<string>().Select(g => string.IsNullOrEmpty(g) ? '\0' : g[0])", castSources),
+        ("OfTypeWhere", "OfType<string>().Where(g => string.IsNullOrEmpty(g))", "OfType<string>().Where(g => string.IsNullOrEmpty(g))", castSources),
+        ("Concat", "Concat(TestData.{2})", "Concat(TestData.{2}.Gen())", intSources),
+        ("ConcatComplex",
+            "Concat(TestData.{2}.Where(x => x % 2 == 0))",
+            "Concat(TestData.{2}.Gen().Where(x => x % 2 == 0))", intSources),
+        ("ConcatTwoOne",
+            "Concat(TestData.{2}.Where(x => x % 2 == 0)).Concat(TestData.{2}.OrderBy(x => x))",
+            "Concat(TestData.{2}.Gen().Where(new {1}EvenPredicate())).Concat(TestData.{2}.Gen().Order())",
+            intSources),
+        ("ConcatOneTwo",
+            "Concat(TestData.{2}.Where(x => x % 2 == 0).Concat(TestData.{2}.OrderBy(x => x)))",
+            "Concat(TestData.{2}.Gen().Where(new {1}EvenPredicate()).Concat(TestData.{2}.Gen().Order()))",
+            intSources),
+        ("Prepend", "Prepend(77)", "Prepend(77)", intSources),
+        ("Append", "Append(42)", "Append(42)", intSources),
+    };
+#>
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+using Cathei.LinqGen;
+
+namespace Cathei.LinqGen.Tests;
+
+<#
+    foreach (var expression in testExpressions)
+    {
+#>
+[TestFixture]
+public class <#= expression.title #>_Tests
+{
+<#
+        foreach (var source in expression.sources)
+        {
+#>
+
+    [Test]
+    public void SameAsLinq_<#= source.variable #>()
+    {
+        var expected = TestData.<#= source.variable #>
+            .<#= string.Format(expression.linq, source.element, source.prefix, source.variable) #>;
+
+        var actual = TestData.<#= source.variable #>
+            .Gen()
+            .<#= string.Format(expression.linqgen, source.element, source.prefix, source.variable) #>;
+
+        CollectionAssert.AreEqual(expected, actual.AsEnumerable());
+    }
+
+    [Test]
+    public void MultipleEnumeration_MustBeSame_<#= source.variable #>()
+    {
+        var enumerable = TestData.<#= source.variable #>
+            .Gen()
+            .<#= string.Format(expression.linqgen, source.element, source.prefix, source.variable) #>;
+
+        var array1 = enumerable.ToArray();
+        var array2 = enumerable.ToArray();
+
+        CollectionAssert.AreEqual(array1, array2);
+    }
+
+    [TestCase(0, 0)]
+    [TestCase(5, 0)]
+    [TestCase(0, 8)]
+    [TestCase(7, 9)]
+    public void SliceSameAsLinq_<#= source.variable #>(int skip, int take)
+    {
+        var expected = TestData.<#= source.variable #>
+            .<#= string.Format(expression.linq, source.element, source.prefix, source.variable) #>
+            .Skip(skip).Take(take);
+
+        var actual = TestData.<#= source.variable #>
+            .Gen()
+            .<#= string.Format(expression.linqgen, source.element, source.prefix, source.variable) #>
+            .Skip(skip).Take(take);
+
+        CollectionAssert.AreEqual(expected, actual.AsEnumerable());
+    }
+<#
+        }
+#>
+}
+<#
+    }
+#>

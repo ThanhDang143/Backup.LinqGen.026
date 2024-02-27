@@ -1,0 +1,15 @@
+{
+  "name": "com.cathei.linqgen",
+  "displayName": "LinqGen",
+  "author": {
+    "name": "Maxwell Keonwoo Kang"
+  },
+  "version": "0.2.6",
+  "unity": "2020.3",
+  "description": "Fast Linq-to-object source generator",
+  "license": "MIT",
+  "documentationUrl": "https://github.com/cathei/LinqGen",
+  "dependencies": {
+    "com.unity.collections": "1.0.0"
+  }
+}
